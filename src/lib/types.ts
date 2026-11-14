@@ -144,6 +144,7 @@ export interface StudyDraft {
   goal: WorkspaceGoal;
   outputs: string[];
   options?: StudyDraftOptions;
+  prompt?: string;
   createdAt: string;
 }
 
