@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useStudoraStore } from "@/lib/store";
 
 export function QuizScreen() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedQuiz = searchParams.get("quiz");
   const sessionId = searchParams.get("session");
@@ -40,6 +41,7 @@ export function QuizScreen() {
 
   function open(id: string | null) {
     setOpened(id); setQuestionIndex(0); setAnswers({}); setChecked(false); setFinished(false);
+    if (id !== requestedQuiz) router.push(id ? `/kuis-latihan?quiz=${encodeURIComponent(id)}` : "/kuis-latihan");
   }
   function next() {
     if (!activeQuiz || !question || selected === undefined || !checked) return;
@@ -77,7 +79,7 @@ export function QuizScreen() {
         const quizAttempts = attempts.filter((item) => item.quizId === quiz.id);
         const bestScore = quizAttempts.length ? Math.max(...quizAttempts.map((item) => item.score)) : null;
         return <Card className="quiz-row" key={quiz.id}><div className="list-main"><strong>{quiz.title}</strong><span>{quiz.questions.length} soal · {quiz.source}</span></div><Badge tone={quiz.origin === "sample" ? "blue" : "green"}>{quiz.origin === "sample" ? "Contoh" : "Pribadi"}</Badge>{bestScore !== null ? <Badge tone={bestScore >= 75 ? "green" : "amber"}>Terbaik {bestScore}%</Badge> : null}<Button onClick={() => open(quiz.id)}>Mulai kuis</Button></Card>;
-      })}{filtered.length === 0 ? <EmptyState title={quizzes.length ? "Kuis tidak ditemukan" : "Belum ada kuis"} description={quizzes.length ? "Coba pencarian lain." : "Muat paket contoh dari Pustaka Materi untuk mencoba kuis. Kuis dari materi pribadi menunggu layanan AI."} /> : null}</div>
+      })}{filtered.length === 0 ? <><EmptyState title={quizzes.length ? "Kuis tidak ditemukan" : "Belum ada kuis"} description={quizzes.length ? "Coba pencarian lain." : "Muat paket contoh dari Pustaka Materi untuk mencoba kuis. Kuis dari materi pribadi menunggu layanan AI."} />{!quizzes.length ? <Link className="button button-secondary quiz-empty-action" href="/pustaka-materi">Buka Pustaka Materi</Link> : null}</> : null}</div>
     </>}
   </main>;
 }

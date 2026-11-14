@@ -47,6 +47,10 @@ export function MaterialsScreen() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!useStudoraStore.persist) {
+      setNotice("Penyimpanan browser tidak tersedia. Aktifkan izin penyimpanan lalu muat ulang halaman.");
+      return;
+    }
     const format = formatOf(file);
     if (!format || file.size === 0 || file.size > UPLOAD_LIMIT_MB * 1048576) {
       setNotice(`Pilih PDF, DOCX, PPTX, atau TXT dengan ukuran maksimal ${UPLOAD_LIMIT_MB} MB.`);
@@ -54,13 +58,19 @@ export function MaterialsScreen() {
     }
     const id = `local-${crypto.randomUUID()}`;
     setBusy(true);
+    let fileSaved = false;
     try {
       await saveLocalFile(id, file);
+      fileSaved = true;
       addMaterial({ id, name: file.name, course: course.trim() || "Materi pribadi", format,
         sizeMb: Math.round(file.size / 104857.6) / 10, addedAt: new Date().toISOString(), origin: "local" });
       setNotice(`${file.name} tersimpan di browser ini.`);
     } catch {
-      setNotice("Berkas gagal disimpan. Periksa ruang penyimpanan browser, lalu coba lagi.");
+      if (fileSaved) {
+        try { removeMaterial(id); } catch { /* Restore the in-memory list even if localStorage is unavailable. */ }
+        try { await deleteLocalFile(id); } catch { setNotice("Penyimpanan gagal dan berkas sementara tidak dapat dibersihkan. Periksa ruang penyimpanan browser."); return; }
+      }
+      setNotice("Berkas gagal disimpan. Periksa izin dan ruang penyimpanan browser, lalu coba lagi.");
     } finally { setBusy(false); }
   }
 
@@ -82,12 +92,17 @@ export function MaterialsScreen() {
   }
 
   async function removeFile(item: Document) {
-    if (!window.confirm(`Hapus ${item.name} beserta draf dan catatan terkait?`)) return;
+    if (!useStudoraStore.persist) { setNotice("Penyimpanan browser tidak tersedia. Materi belum dihapus."); return; }
+    if (!window.confirm(`Hapus ${item.name}? Draf terkait akan dihapus. Catatan pribadi tetap disimpan tanpa tautan materi.`)) return;
+    const previous = useStudoraStore.getState();
     try {
-      await deleteLocalFile(item.id);
       removeMaterial(item.id);
+      await deleteLocalFile(item.id);
       setNotice("Materi lokal dihapus.");
-    } catch { setNotice("Materi gagal dihapus. Coba lagi."); }
+    } catch {
+      try { useStudoraStore.setState({ materials: previous.materials, notes: previous.notes, studyDrafts: previous.studyDrafts, workspacePreferences: previous.workspacePreferences }); } catch { /* Keep the previous state in memory. */ }
+      setNotice("Materi gagal dihapus. Periksa penyimpanan browser dan coba lagi.");
+    }
   }
 
   return <main className="page-content">

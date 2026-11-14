@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -15,6 +15,7 @@ import { useStudoraStore } from "@/lib/store";
 import type { Note } from "@/lib/types";
 
 export function NotesScreen() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedNote = searchParams.get("note");
   const sessionId = searchParams.get("session");
@@ -46,6 +47,7 @@ export function NotesScreen() {
     setEditingId(note?.id ?? null);
     setTitle(note?.title ?? ""); setBody(note?.body ?? ""); setMaterialId(note?.materialId ?? "");
     setShowForm(true); setOpened(null);
+    if (requestedNote) router.replace("/catatan-ringkasan");
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +69,7 @@ export function NotesScreen() {
       <div className="note-modal-actions"><Button type="submit">Simpan catatan</Button><Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Batal</Button></div>
     </form></Card> : null}
     {activeNote ? <Card className="note-detail-card">
-      <div className="note-detail-head"><Badge tone={activeNote.origin === "sample" ? "blue" : "green"}>{activeNote.origin === "sample" ? "Paket contoh" : "Catatan pribadi"}</Badge><button type="button" className="text-link" onClick={() => setOpened(null)}>Semua catatan</button></div>
+      <div className="note-detail-head"><Badge tone={activeNote.origin === "sample" ? "blue" : "green"}>{activeNote.origin === "sample" ? "Paket contoh" : "Catatan pribadi"}</Badge><Link className="text-link" href="/catatan-ringkasan">Semua catatan</Link></div>
       <h2>{activeNote.title}</h2><p className="muted">Sumber: {activeNote.source}</p>
       <div className="note-preview"><strong>Isi catatan</strong><p className="note-body-text">{activeNote.body}</p></div>
       <div className="note-modal-actions">
@@ -80,7 +82,7 @@ export function NotesScreen() {
       <Card className="notes-list">{filtered.map((note) => <article className="note-row" key={note.id}>
         <div className="note-icon"><FileText size={18} aria-hidden="true" /></div><div className="list-main"><strong>{note.title}</strong><span>{note.source}</span></div>
         <Badge tone={note.origin === "sample" ? "blue" : "green"}>{note.origin === "sample" ? "Contoh" : "Pribadi"}</Badge>
-        <Button variant="secondary" size="sm" onClick={() => setOpened(note.id)}>Buka catatan</Button>
+        <Link className="button button-secondary button-sm" href={`/catatan-ringkasan?note=${encodeURIComponent(note.id)}`}>Buka catatan</Link>
       </article>)}
       {filtered.length === 0 ? <EmptyState title={notes.length ? "Catatan tidak ditemukan" : "Belum ada catatan"} description={notes.length ? "Coba kata pencarian lain." : "Tulis catatan pertama Anda atau muat paket contoh dari Pustaka Materi."} /> : null}</Card>
     </>}

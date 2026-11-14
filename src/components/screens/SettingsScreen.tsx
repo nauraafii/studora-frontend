@@ -59,8 +59,10 @@ export function SettingsScreen() {
         <div className="setting-row"><span>Sesi belajar hari ini dan besok</span><Switch aria-label="Pengingat sesi belajar" checked={notificationPrefs.studyReminders} onCheckedChange={(value) => setNotificationPreference("studyReminders", value)} /></div>
       </div><p className="muted">Pengingat muncul saat aplikasi dibuka. Belum ada pesan push atau email.</p></Card>
       <Card><h2 className="card-title">Data pada perangkat ini</h2><dl className="summary-list"><div><dt>Materi</dt><dd>{materials.length}</dd></div><div><dt>Catatan</dt><dd>{notes.length}</dd></div><div><dt>Sesi belajar</dt><dd>{sessions.length}</dd></div></dl>
-        {samplePackLoaded ? <Button variant="secondary" onClick={removeExamples}>Hapus paket contoh</Button> : null}
-        <button type="button" className="danger-link" onClick={clearData}><Trash2 size={14} />Hapus semua data lokal</button>
+        <div className="settings-data-actions">
+          {samplePackLoaded ? <Button variant="secondary" onClick={removeExamples}>Hapus paket contoh</Button> : null}
+          <button type="button" className="danger-link" onClick={clearData}><Trash2 size={14} />Hapus semua data lokal</button>
+        </div>
         {notice ? <p className="muted" role="status">{notice}</p> : null}
       </Card>
     </div><aside className="stack">

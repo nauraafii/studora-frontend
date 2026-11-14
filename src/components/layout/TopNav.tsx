@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, BookOpenText, CircleHelp, Menu, Search, Settings2 } from "lucide-react";
+import { Bell, BookOpenText, CircleHelp, Menu, MoreHorizontal, Search, Settings2 } from "lucide-react";
 import { searchStudora } from "@/lib/search";
 import { useStudoraStore } from "@/lib/store";
 
@@ -30,10 +30,13 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileMenuRef = useRef<HTMLButtonElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const previousSidebarOpen = useRef(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const materials = useStudoraStore((state) => state.materials);
   const notes = useStudoraStore((state) => state.notes);
   const quizzes = useStudoraStore((state) => state.quizzes);
@@ -44,6 +47,25 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
     if (previousSidebarOpen.current && !mobileSidebarOpen) mobileMenuRef.current?.focus();
     previousSidebarOpen.current = mobileSidebarOpen;
   }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,6 +82,7 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
       setFocused(false);
       return;
     }
+    setAccountMenuOpen(false);
     setMobileSearchOpen(true);
     window.requestAnimationFrame(() => inputRef.current?.focus());
   }
@@ -70,7 +93,7 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
   }
 
   return (
-    <header className="topbar">
+    <header className={`topbar${mobileSearchOpen ? " is-search-open" : ""}`}>
       <button
         type="button"
         className="mobile-sidebar-toggle icon-button"
@@ -108,10 +131,16 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
         </div> : null}
       </div>
       <div className="topbar-actions">
-        <Link className="icon-button" href="/pengaturan" aria-label="Pengaturan"><Settings2 size={17} /></Link>
+        <Link className="icon-button desktop-utility" href="/pengaturan" aria-label="Pengaturan"><Settings2 size={17} /></Link>
         <Link className="icon-button" href="/notifikasi" aria-label="Notifikasi"><Bell size={16} /></Link>
-        <Link className="icon-button" href="/bantuan" aria-label="Bantuan"><CircleHelp size={16} /></Link>
-        <Link className="user-avatar" href="/pengaturan#akun" aria-label="Ruang belajar lokal, buka pengaturan akun" title="Ruang belajar lokal">L</Link>
+        <Link className="icon-button desktop-utility" href="/bantuan" aria-label="Bantuan"><CircleHelp size={16} /></Link>
+        <div className="mobile-account" ref={accountMenuRef}>
+          <button type="button" className="icon-button mobile-account-button" ref={accountButtonRef} aria-label="Menu lainnya" aria-expanded={accountMenuOpen} aria-controls="mobile-account-menu" onClick={() => { setAccountMenuOpen((open) => !open); setMobileSearchOpen(false); setFocused(false); }}><MoreHorizontal size={18} aria-hidden="true" /></button>
+          {accountMenuOpen ? <nav id="mobile-account-menu" className="mobile-account-menu" aria-label="Menu lainnya">
+            <Link href="/pengaturan" onClick={() => setAccountMenuOpen(false)}><Settings2 size={16} aria-hidden="true" />Pengaturan</Link>
+            <Link href="/bantuan" onClick={() => setAccountMenuOpen(false)}><CircleHelp size={16} aria-hidden="true" />Bantuan</Link>
+          </nav> : null}
+        </div>
       </div>
       <button type="button" className="mobile-search-toggle icon-button" aria-label={mobileSearchOpen ? "Tutup pencarian" : "Buka pencarian"} aria-expanded={mobileSearchOpen} aria-controls="global-search-input" onClick={toggleMobileSearch}><Search size={16} aria-hidden="true" /></button>
       <Link href="/" className="mobile-brand" aria-label="Studora — AI Study Partner">

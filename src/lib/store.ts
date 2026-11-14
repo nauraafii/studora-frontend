@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { agents, materials as sampleMaterials, notes as sampleNotes, quizzes as sampleQuizzes, studySessions as sampleSessions, tasks as sampleTasks } from "@/lib/mock-data";
+import { dateAfterDays } from "@/lib/dates";
 import type {
   Document,
   Note,
@@ -135,8 +136,8 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     materials: [...state.materials, ...sampleMaterials.map((item) => ({ ...item, origin: "sample" as const }))],
     notes: [...state.notes, ...sampleNotes.map((item) => ({ ...item, origin: "sample" as const }))],
     quizzes: [...state.quizzes, ...sampleQuizzes.map((item) => ({ ...item, origin: "sample" as const }))],
-    studySessions: [...state.studySessions, ...sampleSessions.map((item) => ({ ...item, origin: "sample" as const }))],
-    tasks: [...state.tasks, ...sampleTasks.map((item) => ({ ...item, origin: "sample" as const }))],
+    studySessions: [...state.studySessions, ...sampleSessions.map((item) => ({ ...item, date: dateAfterDays(item.dayOffset), origin: "sample" as const }))],
+    tasks: [...state.tasks, ...sampleTasks.map((item) => ({ ...item, dueDate: item.dueDate ?? (item.dueInDays === undefined ? null : dateAfterDays(item.dueInDays)), dueInDays: undefined, origin: "sample" as const }))],
   })),
   removeSamplePack: () => set((state) => ({
     samplePackLoaded: false,
@@ -156,7 +157,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
   removeMaterial: (id) => set((state) => ({
     materials: state.materials.filter((item) => item.id !== id),
     studyDrafts: state.studyDrafts.filter((item) => item.materialId !== id),
-    notes: state.notes.filter((item) => item.materialId !== id),
+    notes: state.notes.map((item) => item.materialId === id ? { ...item, materialId: undefined, source: "Materi dihapus" } : item),
     workspacePreferences: state.workspacePreferences.selectedMaterialId === id
       ? { ...state.workspacePreferences, selectedMaterialId: "" } : state.workspacePreferences,
   })),
@@ -199,12 +200,15 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
   resetPrototypeData: () => set(defaultData()),
 }), {
   name: "studora-app-state",
-  version: 3,
+  version: 4,
   skipHydration: true,
   storage: createJSONStorage(() => localStorage),
+  onRehydrateStorage: () => (_state, error) => {
+    if (error && typeof window !== "undefined") window.dispatchEvent(new Event("studora-storage-error"));
+  },
   migrate: (persistedState, version) => {
-    const saved = persistedState as Partial<AppState>;
-    const upgraded = version < 2 ? {
+    const saved = (persistedState ?? {}) as Partial<AppState>;
+    let upgraded: Partial<AppState> = version < 2 ? {
         ...saved,
         completedStudySessionIds: [],
         studyDrafts: [],
@@ -216,7 +220,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
         },
       } : saved;
     if (version < 3) {
-      return {
+      upgraded = {
         ...upgraded,
         materials: sampleMaterials.map((item) => ({ ...item, origin: "sample" as const })),
         notes: sampleNotes.map((item) => ({ ...item, origin: "sample" as const })),
@@ -228,7 +232,14 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
         readNotificationIds: [],
       };
     }
-    return saved;
+    if (version < 4) {
+      upgraded = {
+        ...upgraded,
+        tasks: (upgraded.tasks ?? []).map((task) => task.dueDate || task.dueInDays === undefined ? task : { ...task, dueDate: dateAfterDays(task.dueInDays), dueInDays: undefined }),
+        studySessions: (upgraded.studySessions ?? []).map((session) => session.date ? session : { ...session, date: dateAfterDays(session.dayOffset) }),
+      };
+    }
+    return upgraded;
   },
   partialize: (state) => ({
     materials: state.materials,
@@ -250,7 +261,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     quizAttempts: state.quizAttempts,
   }),
   merge: (persistedState, currentState) => {
-    const saved = persistedState as Partial<AppState>;
+    const saved = (persistedState ?? {}) as Partial<AppState>;
     return {
       ...currentState,
       ...saved,

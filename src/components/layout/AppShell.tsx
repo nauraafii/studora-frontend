@@ -8,9 +8,15 @@ import { useStudoraStore } from "@/lib/store";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [storageError, setStorageError] = useState(false);
 
   useEffect(() => {
-    void Promise.resolve(useStudoraStore.persist.rehydrate()).catch(() => undefined);
+    const reportError = () => setStorageError(true);
+    window.addEventListener("studora-storage-error", reportError);
+    const persistence = useStudoraStore.persist;
+    if (persistence) void Promise.resolve().then(() => persistence.rehydrate()).catch(reportError);
+    else reportError();
+    return () => window.removeEventListener("studora-storage-error", reportError);
   }, []);
 
   useEffect(() => {
@@ -50,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileSidebarOpen ? <button type="button" className="mobile-sidebar-backdrop" aria-label="Tutup navigasi" onClick={() => setMobileSidebarOpen(false)} /> : null}
       <div className="dashboard-frame">
         <TopNav mobileSidebarOpen={mobileSidebarOpen} onToggleMobileSidebar={() => setMobileSidebarOpen((open) => !open)} />
+        {storageError ? <div className="notice notice-amber storage-error" role="alert">Data lokal tidak dapat dibuka. Periksa izin penyimpanan browser, lalu muat ulang halaman.</div> : null}
         <AnimatedContent><div id="main-content" tabIndex={-1}>{children}</div></AnimatedContent>
       </div>
     </div>

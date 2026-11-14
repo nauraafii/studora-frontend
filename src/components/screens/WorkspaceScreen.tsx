@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Check, FileText } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { AgentSelectorToggle } from "@/components/workspace/AgentSelectorToggle";
 import { MaterialPicker } from "@/components/workspace/MaterialPicker";
@@ -138,14 +138,9 @@ export function WorkspaceScreen() {
         <section className="workspace-primary" aria-live="polite">
           {step === 0 ? <>
             <h2>Pilih materi</h2>
-            <p className="workspace-intro">Gunakan satu materi contoh untuk memulai draf belajar.</p>
+            <p className="workspace-intro">Pilih satu materi pribadi atau dari paket contoh untuk memulai.</p>
             <MaterialPicker value={preferences.selectedMaterialId} onChange={(value) => setPreference("selectedMaterialId", value)} />
-            {selectedMaterial ? <div className="selected-material-row">
-              <span className="file-icon"><FileText size={18} aria-hidden="true" /></span>
-              <span><strong>{selectedMaterial.name}</strong><small>{selectedMaterial.origin === "sample" ? "Bahan bacaan paket contoh" : `${selectedMaterial.format} · ${selectedMaterial.sizeMb.toLocaleString("id-ID", { minimumFractionDigits: 1 })} MB · tersimpan lokal`}</small></span>
-              <Badge tone="green"><Check size={12} aria-hidden="true" /> Dipilih</Badge>
-            </div> : <p className="field-hint">Pilih materi dari daftar atau <Link href="/pustaka-materi" className="text-link">buka Pustaka Materi</Link>.</p>}
-            <p className="notice notice-blue">Materi lokal dapat ditambahkan melalui Pustaka. AI belum menganalisis berkas yang Anda pilih.</p>
+            <p className="field-hint">{selectedMaterial ? (selectedMaterial.origin === "sample" ? "Materi dari paket contoh." : "Materi tersimpan di browser ini.") : "Belum ada materi yang dipilih."} <Link href="/pustaka-materi" className="text-link">Buka Pustaka Materi</Link></p>
             <div className="workspace-actions workspace-actions-end">
               <Button disabled={!selectedMaterial} onClick={() => setStep(1)}>Berikutnya: pilih tujuan<ArrowRight size={15} aria-hidden="true" /></Button>
             </div>
@@ -246,7 +241,16 @@ export function WorkspaceScreen() {
             </div>
           </> : null}
         </section>
-
+        <aside className="workspace-selection" aria-labelledby="workspace-selection-title">
+          <h2 id="workspace-selection-title">Ringkasan draf</h2>
+          <p>Pilihan Anda selama menyusun rencana belajar.</p>
+          <dl>
+            <div><dt>Materi</dt><dd>{selectedMaterial?.name ?? "Belum dipilih"}</dd></div>
+            <div><dt>Tujuan</dt><dd>{step > 0 ? selectedGoal.label : "Pilih pada langkah berikutnya"}</dd></div>
+            {step > 0 ? <div><dt>Pengaturan hasil</dt><dd>{optionSummary(selectedGoal.id, draftOptions)}</dd></div> : null}
+          </dl>
+          <div className="workspace-selection-note">Draf disimpan di browser. Hasil belajar belum dibuat oleh AI.</div>
+        </aside>
       </div>
 
       <details className="advanced-settings" id="pengaturan-lanjutan" open={advancedOpen} onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}>
