@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpenText, CalendarDays, ChevronDown, Clock3, ListChecks, MessageSquareText, Play, Plus, Sparkles, type LucideIcon } from "lucide-react";
+import { BookOpenText, CalendarDays, ChevronDown, ListChecks, Play, Sparkles, type LucideIcon } from "lucide-react";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { AgentSelectorToggle } from "@/components/workspace/AgentSelectorToggle";
 import { WorkflowSettings } from "@/components/workspace/WorkflowSettings";
@@ -11,7 +11,7 @@ import { MaterialPicker } from "@/components/workspace/MaterialPicker";
 import { Button } from "@/components/ui/button";
 import { agents } from "@/lib/mock-data";
 import { useStudoraStore } from "@/lib/store";
-import type { StudyChatMessage, StudyChatSession, StudyDraftOptions, StudyDraft, WorkspaceGoal } from "@/lib/types";
+import type { StudyDraftOptions, StudyDraft, WorkspaceGoal } from "@/lib/types";
 
 const defaultOptions: StudyDraftOptions = { summaryLength: "short", questionCount: 5, difficulty: "basic", revisionDays: 3, minutesPerDay: 30 };
 const actions: { label: string; description: string; goal: WorkspaceGoal; prompt: string; icon: LucideIcon }[] = [
@@ -21,15 +21,6 @@ const actions: { label: string; description: string; goal: WorkspaceGoal; prompt
 ];
 const outputs: Record<WorkspaceGoal, string> = { understand: "Ringkasan", practice: "Soal latihan", schedule: "Rencana belajar" };
 const goalLabels: Record<WorkspaceGoal, string> = { understand: "Pahami materi", practice: "Latihan soal", schedule: "Susun jadwal" };
-
-function createId(prefix: string) {
-  return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
-}
-
-function formatSessionTime(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Waktu tidak tersedia" : new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
 
 export function WorkspaceScreen() {
   const router = useRouter();
@@ -41,35 +32,35 @@ export function WorkspaceScreen() {
   const preferences = useStudoraStore((state) => state.workspacePreferences);
   const workflowPreferences = useStudoraStore((state) => state.workflowPreferences);
   const savedDrafts = useStudoraStore((state) => state.studyDrafts);
-  const chatSessions = useStudoraStore((state) => state.studyChatSessions);
   const materials = useStudoraStore((state) => state.materials);
   const setPreference = useStudoraStore((state) => state.setWorkspacePreference);
+  const setActiveAssistantThreadId = useStudoraStore((state) => state.setActiveAssistantThreadId);
+  const setAssistantPanelOpen = useStudoraStore((state) => state.setAssistantPanelOpen);
   const setWorkflowPreference = useStudoraStore((state) => state.setWorkflowPreference);
-  const createChatSession = useStudoraStore((state) => state.createStudyChatSession);
-  const appendChatMessage = useStudoraStore((state) => state.appendStudyChatMessage);
   const [advancedOpen, setAdvancedOpen] = useState(settingsQuery === "1");
   const [prompt, setPrompt] = useState("");
   const [promptPreserved, setPromptPreserved] = useState(false);
-  const [chatInput, setChatInput] = useState("");
   const [options, setOptions] = useState<StudyDraftOptions>(defaultOptions);
-  const [storeReady, setStoreReady] = useState(false);
   const lastSuggestedPrompt = useRef("");
   const promptRef = useRef("");
   const selectedMaterials = preferences.selectedMaterialIds
     .map((id) => materials.find((material) => material.id === id))
     .filter((material): material is (typeof materials)[number] => Boolean(material));
   const existingDraft = savedDrafts.find((item) => item.id === draftQuery);
-  const activeSession = chatSessions.find((item) => item.id === sessionQuery);
   const workflowValues = [workflowPreferences.requireApproval, workflowPreferences.onlyOwnMaterials, workflowPreferences.showAgentActivity];
 
   useEffect(() => {
+    if (!sessionQuery) return;
+    const openLegacyThread = () => {
+      useStudoraStore.getState().migrateLegacyStudyChats();
+      setActiveAssistantThreadId(sessionQuery);
+      setAssistantPanelOpen(true);
+      router.replace("/workspace-ai", { scroll: false });
+    };
     const persistence = useStudoraStore.persist;
-    if (!persistence || persistence.hasHydrated()) {
-      setStoreReady(true);
-      return;
-    }
-    return persistence.onFinishHydration(() => setStoreReady(true));
-  }, []);
+    if (persistence.hasHydrated()) openLegacyThread();
+    else return persistence.onFinishHydration(openLegacyThread);
+  }, [router, sessionQuery, setActiveAssistantThreadId, setAssistantPanelOpen]);
 
   useEffect(() => {
     if (!materialQuery || !materials.some((material) => material.id === materialQuery)) return;
@@ -78,7 +69,7 @@ export function WorkspaceScreen() {
   }, [materialQuery, materials, setPreference]);
 
   useEffect(() => {
-    if (!draftQuery || sessionQuery) return;
+    if (!draftQuery) return;
     const draft = savedDrafts.find((item) => item.id === draftQuery);
     if (!draft) return;
     setPreference("selectedMaterialIds", [draft.materialId]);
@@ -89,10 +80,10 @@ export function WorkspaceScreen() {
     setPromptPreserved(false);
     promptRef.current = draft.prompt ?? "";
     setPrompt(promptRef.current);
-  }, [draftQuery, sessionQuery, savedDrafts, setPreference]);
+  }, [draftQuery, savedDrafts, setPreference]);
 
   useEffect(() => {
-    if (draftQuery || sessionQuery) return;
+    if (draftQuery) return;
     const action = actions.find((item) => item.goal === preferences.selectedGoal);
     if (!action) return;
     const currentPrompt = promptRef.current.trim();
@@ -107,11 +98,9 @@ export function WorkspaceScreen() {
       promptRef.current = action.prompt;
       setPrompt(action.prompt);
     }
-  }, [draftQuery, sessionQuery, preferences.selectedGoal]);
+  }, [draftQuery, preferences.selectedGoal]);
 
   useEffect(() => { if (settingsQuery === "1") setAdvancedOpen(true); }, [settingsQuery]);
-  useEffect(() => { setChatInput(""); }, [sessionQuery]);
-
   function selectAction(goal: WorkspaceGoal) {
     const action = actions.find((item) => item.goal === goal);
     if (!action) return;
@@ -131,28 +120,16 @@ export function WorkspaceScreen() {
   function startSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedMaterials.length || !prompt.trim()) return;
-    const now = new Date().toISOString();
-    const firstMessage: StudyChatMessage = { id: createId("message"), role: "user", content: prompt.trim(), createdAt: now };
-    const session: StudyChatSession = {
-      id: createId("chat"),
+    const materialNames = selectedMaterials.map(({ name }) => name).join(", ");
+    const goal = goalLabels[preferences.selectedGoal];
+    window.dispatchEvent(new CustomEvent("studora-start-study-session", { detail: {
+      title: `${goal} · ${selectedMaterials.length} materi`,
+      text: `Tujuan: ${goal}. Materi yang dipilih: ${materialNames}. Instruksi: ${prompt.trim()}`,
+      materialIds: selectedMaterials.map(({ id }) => id),
       materials: selectedMaterials.map(({ id, name }) => ({ id, name })),
       goal: preferences.selectedGoal,
       options: { ...options },
-      status: "waiting_for_ai",
-      messages: [firstMessage],
-      createdAt: now,
-      updatedAt: now,
-    };
-    createChatSession(session);
-    router.push(`/workspace-ai?session=${encodeURIComponent(session.id)}`);
-  }
-
-  function sendFollowUp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!activeSession || !chatInput.trim()) return;
-    const message: StudyChatMessage = { id: createId("message"), role: "user", content: chatInput.trim(), createdAt: new Date().toISOString() };
-    appendChatMessage(activeSession.id, message);
-    setChatInput("");
+    } }));
   }
 
   function changeWorkflowSetting(index: number, value: boolean) {
@@ -163,35 +140,7 @@ export function WorkspaceScreen() {
   const selectedAction = actions.find((action) => action.goal === preferences.selectedGoal);
 
   return <main className="page-content chat-page-content">
-    {sessionQuery && activeSession ? <>
-      <PageHeading title="Percakapan belajar" description={`${activeSession.materials.length} materi dalam sesi ini`} aside={<span className="badge">Sesi tersimpan</span>} />
-      <div className="chat-session-toolbar">
-        <span><MessageSquareText size={15} aria-hidden="true" />{goalLabels[activeSession.goal]} · {activeSession.materials.length} materi · {activeSession.messages.length} pesan · diperbarui {formatSessionTime(activeSession.updatedAt)}</span>
-        <Link href="/workspace-ai" className="button button-secondary"><Plus size={15} aria-hidden="true" />Sesi baru</Link>
-      </div>
-      <section className="chat-panel chat-session-panel" aria-label="Percakapan belajar">
-        <div className="chat-panel-header">
-          <div><h2>Materi sesi</h2><p>{goalLabels[activeSession.goal]} · materi tersimpan bersama sesi ini</p><ul className="chat-session-material-list">{activeSession.materials.map((material) => <li key={material.id}>{material.name}</li>)}</ul></div>
-          <Clock3 className="chat-panel-header-icon" size={19} aria-hidden="true" />
-        </div>
-        <div className="chat-session-messages" aria-live="polite" aria-relevant="additions">
-          {activeSession.messages.map((message) => <article className={message.role === "user" ? "chat-user-message" : "chat-ai-message"} key={message.id}>
-            <span>{message.role === "user" ? "Anda" : "Studora"} · {formatSessionTime(message.createdAt)}</span>
-            <p>{message.content}</p>
-          </article>)}
-          <div className="chat-ai-unavailable" role="status">
-            <span className="chat-avatar"><Sparkles size={16} aria-hidden="true" /></span>
-            <div><strong>AI belum tersambung</strong><p>Sesi dan pesan Anda tersimpan di perangkat ini. Jawaban AI akan tersedia setelah layanan tersambung.</p></div>
-          </div>
-        </div>
-        <form className="chat-session-composer" onSubmit={sendFollowUp} aria-label="Kirim pesan lanjutan">
-          <label className="chat-followup-label" htmlFor="chat-follow-up">Pesan lanjutan</label>
-          <textarea id="chat-follow-up" className="textarea" rows={2} value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="Tulis pesan lanjutan…" />
-          <Button type="submit" disabled={!chatInput.trim()}><MessageSquareText size={15} aria-hidden="true" />Kirim pesan</Button>
-        </form>
-        <p className="chat-session-local-note">Percakapan ini disimpan di browser ini dan belum disinkronkan ke akun.</p>
-      </section>
-    </> : sessionQuery ? storeReady ? <section className="chat-session-missing"><h1>Sesi tidak ditemukan</h1><p>Sesi ini mungkin sudah dihapus dari penyimpanan perangkat.</p><Link className="button button-primary" href="/riwayat">Buka Riwayat</Link></section> : <p role="status">Memuat sesi…</p> : <>
+    <>
       <PageHeading title="Ruang Kerja AI" description="Pilih materi, tentukan jenis bantuan, lalu tulis permintaan." />
       <div className="chat-service-status" role="status"><span aria-hidden="true" /><strong>Mode simulasi</strong><span>AI belum tersambung; materi belum dianalisis.</span></div>
       <form className="chat-workspace" onSubmit={startSession} aria-label="Siapkan sesi belajar">
@@ -228,7 +177,7 @@ export function WorkspaceScreen() {
           </div>
         </section>
       </form>
-    </>}
+    </>
 
     <details className="advanced-settings chat-advanced-settings" id="pengaturan-lanjutan" open={advancedOpen} onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}>
       <summary>Pengaturan lanjutan · agen dan preferensi</summary><div className="advanced-settings-content">

@@ -59,7 +59,7 @@ export function TasksScreen() {
 
   const createTask = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!title.trim() || !dueDate) return;
+    if (!title.trim()) return;
     const task: Task = {
       id: `task-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
       title: title.trim(),
@@ -83,7 +83,7 @@ export function TasksScreen() {
       {showForm ? <Card className="task-form-card"><form onSubmit={createTask} className="inline-form">
         <Input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nama tugas" aria-label="Nama tugas" required />
         <Input value={course} onChange={(event) => setCourse(event.target.value)} placeholder="Mata kuliah (opsional)" aria-label="Mata kuliah tugas" />
-        <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} aria-label="Tenggat tugas" required />
+        <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} aria-label="Tenggat tugas (opsional)" />
         <select className="input" value={priority} onChange={(event) => setPriority(event.target.value as Task["priority"])} aria-label="Prioritas tugas"><option value="low">Rendah</option><option value="medium">Sedang</option><option value="high">Tinggi</option></select>
         <Button type="submit">Simpan Tugas</Button><Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Batal</Button>
       </form></Card> : null}
@@ -95,10 +95,12 @@ export function TasksScreen() {
             return <div id={task.id} className={targetTask === task.id ? "task-row is-targeted" : "task-row"} key={task.id}>
             <button type="button" className={task.status === "done" ? "task-check is-done" : "task-check"} onClick={() => toggleTask(task.id)} aria-pressed={task.status === "done"} aria-label={`${task.status === "done" ? "Tandai belum selesai" : "Tandai selesai"}: ${task.title}`}>{task.status === "done" ? <CircleCheck size={18} /> : <Circle size={18} />}</button>
             <div className="list-main"><strong className={task.status === "done" ? "is-complete" : ""}>{task.title}</strong><span>{task.course}</span>{editingId === task.id ? <div className="inline-form task-edit"><Input type="date" value={editDueDate} onChange={(event) => setEditDueDate(event.target.value)} aria-label={`Tenggat ${task.title}`} /><button type="button" className="text-link" onClick={() => { updateTask(task.id, { dueDate: editDueDate || null }); setEditingId(null); }}>Simpan</button><button type="button" className="text-link" onClick={() => setEditingId(null)}>Batal</button></div> : null}</div>
-            <Badge>{task.status === "done" ? "Selesai" : "Tugas"}</Badge>
-            <Badge tone={task.status === "done" ? "green" : isOverdue ? "red" : task.priority === "high" ? "amber" : "blue"}>{task.status === "done" ? "Selesai" : formatDueDate(taskDueDate)}</Badge>
+            <div className="task-row-details">
+              {task.status === "open" ? <Badge>Tugas</Badge> : <Badge tone="green">Selesai</Badge>}
+              {task.status === "open" ? <Badge tone={isOverdue ? "red" : task.priority === "high" ? "amber" : "blue"}>{formatDueDate(taskDueDate)}</Badge> : null}
             {task.status === "open" ? <button type="button" className="text-link" onClick={() => { setEditingId(task.id); setEditDueDate(resolveTaskDueDate(task) ?? ""); }}>Ubah tenggat</button> : null}
             {task.origin !== "sample" ? <button type="button" className="text-link" onClick={() => { if (window.confirm(`Hapus tugas ${task.title}?`)) removeTask(task.id); }}>Hapus</button> : null}
+            </div>
             </div>;
           })}
           {visible.length === 0 ? <p className="empty-copy">Belum ada tugas pada bagian ini.</p> : null}

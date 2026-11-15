@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
 import { AnimatedContent } from "@/components/layout/AnimatedContent";
 import { useStudoraStore } from "@/lib/store";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -14,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     const reportError = () => setStorageError(true);
     window.addEventListener("studora-storage-error", reportError);
     const persistence = useStudoraStore.persist;
-    if (persistence) void Promise.resolve().then(() => persistence.rehydrate()).catch(reportError);
+    if (persistence) void Promise.resolve().then(() => persistence.rehydrate()).then(() => useStudoraStore.getState().migrateLegacyStudyChats()).catch(reportError);
     else reportError();
     return () => window.removeEventListener("studora-storage-error", reportError);
   }, []);
@@ -59,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {storageError ? <div className="notice notice-amber storage-error" role="alert">Data lokal tidak dapat dibuka. Periksa izin penyimpanan browser, lalu muat ulang halaman.</div> : null}
         <AnimatedContent><div id="main-content" tabIndex={-1}>{children}</div></AnimatedContent>
       </div>
+      <AssistantPanel />
     </div>
   );
 }

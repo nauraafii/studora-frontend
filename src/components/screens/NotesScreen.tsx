@@ -81,8 +81,10 @@ export function NotesScreen() {
       <div className="page-toolbar"><SearchInput value={query} onChange={setQuery} placeholder="Cari catatan" label="Cari catatan dan ringkasan" /></div>
       <Card className="notes-list">{filtered.map((note) => <article className="note-row" key={note.id}>
         <div className="note-icon"><FileText size={18} aria-hidden="true" /></div><div className="list-main"><strong>{note.title}</strong><span>{note.source}</span></div>
+        <div className="note-row-actions">
         <Badge tone={note.origin === "sample" ? "blue" : "green"}>{note.origin === "sample" ? "Contoh" : "Pribadi"}</Badge>
         <Link className="button button-secondary button-sm" href={`/catatan-ringkasan?note=${encodeURIComponent(note.id)}`}>Buka catatan</Link>
+        </div>
       </article>)}
       {filtered.length === 0 ? <EmptyState title={notes.length ? "Catatan tidak ditemukan" : "Belum ada catatan"} description={notes.length ? "Coba kata pencarian lain." : "Tulis catatan pertama Anda atau muat paket contoh dari Pustaka Materi."} /> : null}</Card>
     </>}

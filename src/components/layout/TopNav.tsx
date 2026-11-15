@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, BookOpenText, CircleHelp, Menu, MoreHorizontal, Search, Settings2 } from "lucide-react";
+import { Bell, BookOpenText, CircleHelp, Menu, MoreHorizontal, Search, Settings2, Sparkles } from "lucide-react";
 import { searchStudora } from "@/lib/search";
 import { useStudoraStore } from "@/lib/store";
 
@@ -131,14 +131,16 @@ export function TopNav({ mobileSidebarOpen, onToggleMobileSidebar }: {
         </div> : null}
       </div>
       <div className="topbar-actions">
+        <button type="button" className="icon-button assistant-nav-button" aria-label="Buka Asisten AI" title="Asisten AI (Ctrl/⌘ + /)" onClick={() => window.dispatchEvent(new Event("studora-open-assistant"))}><Sparkles size={16} /></button>
         <Link className="icon-button desktop-utility" href="/pengaturan" aria-label="Pengaturan"><Settings2 size={17} /></Link>
-        <Link className="icon-button" href="/notifikasi" aria-label="Notifikasi"><Bell size={16} /></Link>
+        <Link className="icon-button mobile-notification-direct" href="/notifikasi" aria-label="Notifikasi"><Bell size={16} /></Link>
         <Link className="icon-button desktop-utility" href="/bantuan" aria-label="Bantuan"><CircleHelp size={16} /></Link>
         <div className="mobile-account" ref={accountMenuRef}>
           <button type="button" className="icon-button mobile-account-button" ref={accountButtonRef} aria-label="Menu lainnya" aria-expanded={accountMenuOpen} aria-controls="mobile-account-menu" onClick={() => { setAccountMenuOpen((open) => !open); setMobileSearchOpen(false); setFocused(false); }}><MoreHorizontal size={18} aria-hidden="true" /></button>
           {accountMenuOpen ? <nav id="mobile-account-menu" className="mobile-account-menu" aria-label="Menu lainnya">
             <Link href="/pengaturan" onClick={() => setAccountMenuOpen(false)}><Settings2 size={16} aria-hidden="true" />Pengaturan</Link>
             <Link href="/bantuan" onClick={() => setAccountMenuOpen(false)}><CircleHelp size={16} aria-hidden="true" />Bantuan</Link>
+            <Link className="mobile-menu-notification" href="/notifikasi" onClick={() => setAccountMenuOpen(false)}><Bell size={16} aria-hidden="true" />Notifikasi</Link>
           </nav> : null}
         </div>
       </div>

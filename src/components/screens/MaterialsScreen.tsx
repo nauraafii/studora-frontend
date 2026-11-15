@@ -125,11 +125,13 @@ export function MaterialsScreen() {
         {filtered.map((item) => <article className="material-row" key={item.id}>
           <span className="file-icon"><FileText size={18} aria-hidden="true" /></span>
           <div className="list-main"><strong>{item.name}</strong><span>{item.origin === "sample" ? "Bahan bacaan paket contoh" : `${item.format} · ${item.sizeMb.toLocaleString("id-ID")} MB`} · {item.course}</span></div>
+          <div className="material-row-actions">
           <Badge tone={item.origin === "sample" ? "violet" : "green"}>{item.origin === "sample" ? "Contoh" : "Lokal"}</Badge>
           {item.origin === "sample" && notes.find((note) => note.source === item.name) ? <Link className="text-link" href={`/catatan-ringkasan?note=${encodeURIComponent(notes.find((note) => note.source === item.name)!.id)}`}>Baca contoh</Link> : null}
           {item.origin !== "sample" ? <button type="button" className="text-link" onClick={() => openFile(item)}>{item.format === "DOCX" || item.format === "PPTX" ? "Unduh" : "Buka"}</button> : null}
           <Link className="button button-secondary button-sm" href={`/workspace-ai?material=${encodeURIComponent(item.id)}`}>Pilih untuk draf</Link>
           {item.origin !== "sample" ? <button type="button" className="icon-button" onClick={() => removeFile(item)} aria-label={`Hapus ${item.name}`}><Trash2 size={15} /></button> : null}
+          </div>
         </article>)}
         {filtered.length === 0 ? <EmptyState title={materials.length ? "Materi tidak ditemukan" : "Pustaka masih kosong"} description={materials.length ? "Coba pencarian atau mata kuliah lain." : "Tambahkan berkas Anda atau muat paket contoh untuk mulai belajar."} /> : null}
       </div></Card>

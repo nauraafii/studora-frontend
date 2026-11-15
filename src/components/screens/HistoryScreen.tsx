@@ -17,25 +17,25 @@ export function HistoryScreen() {
   const materials = useStudoraStore((state) => state.materials);
   const quizzes = useStudoraStore((state) => state.quizzes);
   const drafts = useStudoraStore((state) => state.studyDrafts);
-  const chatSessions = useStudoraStore((state) => state.studyChatSessions);
+  const assistantThreads = useStudoraStore((state) => state.assistantThreads);
   const attempts = useStudoraStore((state) => state.quizAttempts);
   const sessions = useStudoraStore((state) => state.studySessions);
   const completedIds = useStudoraStore((state) => state.completedStudySessionIds);
   const sortedDrafts = [...drafts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const sortedChatSessions = [...chatSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const sortedAssistantThreads = [...assistantThreads].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const sortedAttempts = [...attempts].sort((a, b) => b.completedAt.localeCompare(a.completedAt));
 
   return (
     <main className="page-content">
       <PageHeading title="Riwayat Belajar" description="Percakapan, draf, kuis, dan sesi yang tersimpan di perangkat ini." />
       <section className="stack chat-history-section" aria-labelledby="chat-history-heading">
-        <div className="section-heading"><div><h2 id="chat-history-heading">Percakapan AI</h2><p>{chatSessions.length} sesi tersimpan secara lokal</p></div><Badge tone="blue">{chatSessions.length}</Badge></div>
-        {sortedChatSessions.length ? <Card className="history-list">
-          {sortedChatSessions.map((session) => <Link className="history-row history-entry chat-history-entry" key={session.id} href={`/workspace-ai?session=${encodeURIComponent(session.id)}`}>
+        <div className="section-heading"><div><h2 id="chat-history-heading">Percakapan AI</h2><p>{assistantThreads.length} percakapan di Asisten AI</p></div><Badge tone="blue">{assistantThreads.length}</Badge></div>
+        {sortedAssistantThreads.length ? <Card className="history-list">
+          {sortedAssistantThreads.map((thread) => <button type="button" className="history-row history-entry chat-history-entry" key={thread.id} onClick={() => window.dispatchEvent(new CustomEvent("studora-open-assistant-thread", { detail: { threadId: thread.id } }))}>
             <span className="agent-icon history-entry-icon"><MessageSquareText size={16} aria-hidden="true" /></span>
-            <span className="list-main"><strong>{session.materials[0]?.name ?? "Materi tidak tersedia"}{session.materials.length > 1 ? ` + ${session.materials.length - 1} materi lainnya` : ""}</strong><span>{session.materials.length} materi · {session.goal === "practice" ? "Latihan soal" : session.goal === "schedule" ? "Susun jadwal" : "Pahami materi"} · {session.messages.length} pesan · {formatTimestamp(session.updatedAt)}</span></span>
-            <Badge>Simpan lokal</Badge><span className="text-link">Buka percakapan<ArrowRight size={14} aria-hidden="true" /></span>
-          </Link>)}
+            <span className="list-main"><strong>{thread.title}</strong><span>{thread.context?.materials.length ? `${thread.context.materials.length} materi · ` : ""}{thread.messages.length} pesan · {formatTimestamp(thread.updatedAt)}</span></span>
+            <Badge>{thread.source === "legacy" ? "Sesi lama · prototipe" : "Lokal"}</Badge><span className="text-link">Buka di Asisten AI<ArrowRight size={14} aria-hidden="true" /></span>
+          </button>)}
         </Card> : <div className="empty-panel"><EmptyState title="Belum ada percakapan" description="Sesi yang dijalankan dari Ruang Kerja AI akan otomatis muncul di sini." /><Link href="/workspace-ai" className="button button-primary">Mulai sesi belajar</Link></div>}
       </section>
       <div className="history-columns">

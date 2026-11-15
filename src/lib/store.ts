@@ -14,6 +14,8 @@ import type {
   StudyDraft,
   StudyChatMessage,
   StudyChatSession,
+  AssistantMessage,
+  AssistantThread,
   Task,
   WorkspacePreferences,
   WorkflowPreferences,
@@ -37,6 +39,9 @@ type AppState = {
   completedStudySessionIds: string[];
   studyDrafts: StudyDraft[];
   studyChatSessions: StudyChatSession[];
+  assistantThreads: AssistantThread[];
+  activeAssistantThreadId: string | null;
+  assistantPanelOpen: boolean;
   quizAttempts: QuizAttempt[];
   toggleTask: (id: string) => void;
   addTask: (task: Task) => void;
@@ -62,6 +67,12 @@ type AppState = {
   saveStudyDraft: (draft: StudyDraft) => void;
   createStudyChatSession: (session: StudyChatSession) => void;
   appendStudyChatMessage: (sessionId: string, message: StudyChatMessage) => void;
+  createAssistantThread: (thread: AssistantThread) => void;
+  appendAssistantMessage: (threadId: string, message: AssistantMessage) => void;
+  setActiveAssistantThreadId: (id: string | null) => void;
+  setAssistantPanelOpen: (open: boolean) => void;
+  migrateLegacyStudyChats: () => void;
+  importAssistantThreads: (threads: AssistantThread[]) => void;
   recordQuizAttempt: (attempt: QuizAttempt) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -116,6 +127,9 @@ function defaultData() {
     completedStudySessionIds: [],
     studyDrafts: [],
     studyChatSessions: [],
+    assistantThreads: [],
+    activeAssistantThreadId: null,
+    assistantPanelOpen: false,
     quizAttempts: [],
   };
 }
@@ -205,6 +219,40 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
       ? { ...session, messages: [...session.messages, message], updatedAt: message.createdAt }
       : session),
   })),
+  createAssistantThread: (thread) => set((state) => ({
+    assistantThreads: [thread, ...state.assistantThreads.filter((item) => item.id !== thread.id)],
+    activeAssistantThreadId: thread.id,
+  })),
+  appendAssistantMessage: (threadId, message) => set((state) => ({
+    assistantThreads: state.assistantThreads.map((thread) => thread.id === threadId
+      ? { ...thread, messages: [...thread.messages, message], updatedAt: message.createdAt }
+      : thread),
+  })),
+  setActiveAssistantThreadId: (id) => set({ activeAssistantThreadId: id }),
+  setAssistantPanelOpen: (open) => set({ assistantPanelOpen: open }),
+  importAssistantThreads: (threads) => set((state) => {
+    const known = new Set(state.assistantThreads.map((thread) => thread.id));
+    const imported = threads.filter((thread) => !known.has(thread.id));
+    return imported.length ? { assistantThreads: [...imported, ...state.assistantThreads] } : state;
+  }),
+  migrateLegacyStudyChats: () => set((state) => {
+    const alreadyMigrated = new Set(state.assistantThreads.map((thread) => thread.id));
+    const mappable = state.studyChatSessions.filter((session) => Boolean(session.id) && !alreadyMigrated.has(session.id));
+    const unmappable = state.studyChatSessions.filter((session) => !session.id);
+    const migrated: AssistantThread[] = mappable.map((session) => ({
+      id: session.id,
+      title: `${session.materials[0]?.name ?? "Sesi belajar"}${session.materials.length > 1 ? ` + ${session.materials.length - 1} materi` : ""}`,
+      updatedAt: session.updatedAt,
+      messages: session.messages.map((message) => ({ ...message, content: message.content })),
+      source: "legacy",
+      context: { materialIds: session.materials.map((material) => material.id), materials: session.materials, goal: session.goal },
+    }));
+    return {
+      assistantThreads: [...migrated, ...state.assistantThreads],
+      studyChatSessions: unmappable,
+      activeAssistantThreadId: state.activeAssistantThreadId ?? migrated[0]?.id ?? null,
+    };
+  }),
   recordQuizAttempt: (attempt) => set((state) => ({ quizAttempts: [attempt, ...state.quizAttempts] })),
   markNotificationRead: (id) => set((state) => ({
     notifications: state.notifications.map((item) => item.id === id ? { ...item, unread: false } : item),
@@ -299,6 +347,8 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     completedStudySessionIds: state.completedStudySessionIds,
     studyDrafts: state.studyDrafts,
     studyChatSessions: state.studyChatSessions,
+    assistantThreads: state.assistantThreads,
+    activeAssistantThreadId: state.activeAssistantThreadId,
     quizAttempts: state.quizAttempts,
   }),
   merge: (persistedState, currentState) => {
@@ -307,6 +357,9 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
       ...currentState,
       ...saved,
       studyChatSessions: saved.studyChatSessions ?? currentState.studyChatSessions,
+      assistantThreads: saved.assistantThreads ?? currentState.assistantThreads,
+      activeAssistantThreadId: saved.activeAssistantThreadId ?? currentState.activeAssistantThreadId,
+      assistantPanelOpen: false,
       workflowPreferences: { ...currentState.workflowPreferences, ...saved.workflowPreferences },
       privacyPreferences: { ...currentState.privacyPreferences, ...saved.privacyPreferences },
       notificationPreferences: { ...currentState.notificationPreferences, ...saved.notificationPreferences },

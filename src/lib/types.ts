@@ -15,7 +15,29 @@ export interface Task {
   dueInDays?: number;
   status: "open" | "done";
   priority: "low" | "medium" | "high";
-  origin?: "sample" | "local";
+  origin?: "sample" | "local" | "assistant";
+}
+
+export interface AssistantMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  task?: Task;
+}
+
+export interface AssistantThread {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messages: AssistantMessage[];
+  source: "demo" | "legacy";
+  context?: {
+    materialIds: string[];
+    materials: StudyChatMaterial[];
+    goal?: WorkspaceGoal;
+    options?: StudyDraftOptions;
+  };
 }
 
 export interface Note {
