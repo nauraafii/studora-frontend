@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileText, RotateCcw } from "lucide-react";
+import { ArrowRight, FileText, MessageSquareText, RotateCcw } from "lucide-react";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Card } from "@/components/ui/card";
@@ -17,15 +17,27 @@ export function HistoryScreen() {
   const materials = useStudoraStore((state) => state.materials);
   const quizzes = useStudoraStore((state) => state.quizzes);
   const drafts = useStudoraStore((state) => state.studyDrafts);
+  const chatSessions = useStudoraStore((state) => state.studyChatSessions);
   const attempts = useStudoraStore((state) => state.quizAttempts);
   const sessions = useStudoraStore((state) => state.studySessions);
   const completedIds = useStudoraStore((state) => state.completedStudySessionIds);
   const sortedDrafts = [...drafts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const sortedChatSessions = [...chatSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const sortedAttempts = [...attempts].sort((a, b) => b.completedAt.localeCompare(a.completedAt));
 
   return (
     <main className="page-content">
-      <PageHeading title="Riwayat Belajar" description="Draf, kuis, dan sesi yang tersimpan di perangkat ini." />
+      <PageHeading title="Riwayat Belajar" description="Percakapan, draf, kuis, dan sesi yang tersimpan di perangkat ini." />
+      <section className="stack chat-history-section" aria-labelledby="chat-history-heading">
+        <div className="section-heading"><div><h2 id="chat-history-heading">Percakapan AI</h2><p>{chatSessions.length} sesi tersimpan secara lokal</p></div><Badge tone="blue">{chatSessions.length}</Badge></div>
+        {sortedChatSessions.length ? <Card className="history-list">
+          {sortedChatSessions.map((session) => <Link className="history-row history-entry chat-history-entry" key={session.id} href={`/workspace-ai?session=${encodeURIComponent(session.id)}`}>
+            <span className="agent-icon history-entry-icon"><MessageSquareText size={16} aria-hidden="true" /></span>
+            <span className="list-main"><strong>{session.materials[0]?.name ?? "Materi tidak tersedia"}{session.materials.length > 1 ? ` + ${session.materials.length - 1} materi lainnya` : ""}</strong><span>{session.materials.length} materi · {session.goal === "practice" ? "Latihan soal" : session.goal === "schedule" ? "Susun jadwal" : "Pahami materi"} · {session.messages.length} pesan · {formatTimestamp(session.updatedAt)}</span></span>
+            <Badge>Simpan lokal</Badge><span className="text-link">Buka percakapan<ArrowRight size={14} aria-hidden="true" /></span>
+          </Link>)}
+        </Card> : <div className="empty-panel"><EmptyState title="Belum ada percakapan" description="Sesi yang dijalankan dari Ruang Kerja AI akan otomatis muncul di sini." /><Link href="/workspace-ai" className="button button-primary">Mulai sesi belajar</Link></div>}
+      </section>
       <div className="history-columns">
         <section className="stack" aria-labelledby="draft-history-heading">
           <div className="section-heading"><div><h2 id="draft-history-heading">Draf belajar</h2><p>{drafts.length} draf tersimpan secara lokal</p></div><Badge tone="blue">{drafts.length}</Badge></div>
@@ -42,7 +54,7 @@ export function HistoryScreen() {
                 <Link href={nextHref} className="text-link">{nextLabel}</Link>
               </article>;
             })}
-          </Card> : <div className="empty-panel"><EmptyState title="Belum ada draf tersimpan" description="Pilih materi dan tujuan di Ruang Kerja AI, lalu simpan draf untuk menemukannya di sini." /><Link href="/workspace-ai" className="button button-primary">Susun draf</Link></div>}
+          </Card> : <div className="empty-panel"><EmptyState title="Belum ada draf tersimpan" description="Draf lama yang belum dijalankan akan tetap tersimpan di sini." /><Link href="/workspace-ai" className="button button-primary">Buka Ruang Kerja AI</Link></div>}
         </section>
 
         <section className="stack" aria-labelledby="quiz-history-heading">
@@ -63,7 +75,7 @@ export function HistoryScreen() {
       <section className="stack" aria-labelledby="session-history-heading"><div className="section-heading"><div><h2 id="session-history-heading">Sesi selesai</h2><p>Kegiatan yang Anda tandai selesai.</p></div><Badge tone="green">{completedIds.filter((id) => sessions.some((session) => session.id === id)).length}</Badge></div>
         {completedIds.some((id) => sessions.some((session) => session.id === id)) ? <Card className="history-list">{sessions.filter((session) => completedIds.includes(session.id)).map((session) => <article className="history-row history-entry" key={session.id}><span className="agent-icon history-entry-icon"><FileText size={16} aria-hidden="true" /></span><div className="list-main"><strong>{session.title}</strong><span>{session.detail} · {session.durationMinutes} menit</span></div><Link className="text-link" href="/perencana-belajar">Buka rencana<ArrowRight size={14} aria-hidden="true" /></Link></article>)}</Card> : <div className="empty-panel"><EmptyState title="Belum ada sesi selesai" description="Sesi yang Anda tandai selesai akan muncul di sini." /></div>}
       </section>
-      <div className="history-primary-action"><Link className="button button-primary" href="/workspace-ai">Susun draf belajar<ArrowRight size={15} aria-hidden="true" /></Link></div>
+      <div className="history-primary-action"><Link className="button button-primary" href="/workspace-ai">Mulai sesi belajar<ArrowRight size={15} aria-hidden="true" /></Link></div>
     </main>
   );
 }

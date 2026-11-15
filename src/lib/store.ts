@@ -12,6 +12,8 @@ import type {
   StudySession,
   StudyNotification,
   StudyDraft,
+  StudyChatMessage,
+  StudyChatSession,
   Task,
   WorkspacePreferences,
   WorkflowPreferences,
@@ -34,6 +36,7 @@ type AppState = {
   studySessionTimes: Record<string, string>;
   completedStudySessionIds: string[];
   studyDrafts: StudyDraft[];
+  studyChatSessions: StudyChatSession[];
   quizAttempts: QuizAttempt[];
   toggleTask: (id: string) => void;
   addTask: (task: Task) => void;
@@ -57,6 +60,8 @@ type AppState = {
   setStudySessionTime: (id: string, time: string) => void;
   completeStudySession: (id: string) => void;
   saveStudyDraft: (draft: StudyDraft) => void;
+  createStudyChatSession: (session: StudyChatSession) => void;
+  appendStudyChatMessage: (sessionId: string, message: StudyChatMessage) => void;
   recordQuizAttempt: (attempt: QuizAttempt) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -85,7 +90,7 @@ const defaultNotificationPreferences: NotificationPreferences = {
 
 const defaultWorkspacePreferences = (): WorkspacePreferences => ({
   description: "Pahami konsep kunci dari materi yang dipilih.",
-  selectedMaterialId: "",
+  selectedMaterialIds: [],
   selectedGoal: "understand",
   selectedTemplate: "",
   selectedOutputs: ["Ringkasan"],
@@ -110,6 +115,7 @@ function defaultData() {
     studySessionTimes: {},
     completedStudySessionIds: [],
     studyDrafts: [],
+    studyChatSessions: [],
     quizAttempts: [],
   };
 }
@@ -150,16 +156,20 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     quizAttempts: state.quizAttempts.filter((item) => !sampleQuizzes.some((sample) => sample.id === item.quizId)),
     completedStudySessionIds: state.completedStudySessionIds.filter((id) => !sampleSessions.some((sample) => sample.id === id)),
     studyPlanApproved: false,
-    workspacePreferences: sampleMaterials.some((sample) => sample.id === state.workspacePreferences.selectedMaterialId)
-      ? { ...state.workspacePreferences, selectedMaterialId: "" } : state.workspacePreferences,
+    workspacePreferences: {
+      ...state.workspacePreferences,
+      selectedMaterialIds: state.workspacePreferences.selectedMaterialIds.filter((id) => !sampleMaterials.some((sample) => sample.id === id)),
+    },
   })),
   addMaterial: (material) => set((state) => ({ materials: [material, ...state.materials] })),
   removeMaterial: (id) => set((state) => ({
     materials: state.materials.filter((item) => item.id !== id),
     studyDrafts: state.studyDrafts.filter((item) => item.materialId !== id),
     notes: state.notes.map((item) => item.materialId === id ? { ...item, materialId: undefined, source: "Materi dihapus" } : item),
-    workspacePreferences: state.workspacePreferences.selectedMaterialId === id
-      ? { ...state.workspacePreferences, selectedMaterialId: "" } : state.workspacePreferences,
+    workspacePreferences: {
+      ...state.workspacePreferences,
+      selectedMaterialIds: state.workspacePreferences.selectedMaterialIds.filter((materialId) => materialId !== id),
+    },
   })),
   addNote: (note) => set((state) => ({ notes: [note, ...state.notes] })),
   updateNote: (id, patch) => set((state) => ({ notes: state.notes.map((note) => note.id === id ? { ...note, ...patch } : note) })),
@@ -189,6 +199,12 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
       : [...state.completedStudySessionIds, id],
   })),
   saveStudyDraft: (draft) => set((state) => ({ studyDrafts: [draft, ...state.studyDrafts.filter((item) => item.id !== draft.id)] })),
+  createStudyChatSession: (session) => set((state) => ({ studyChatSessions: [session, ...state.studyChatSessions.filter((item) => item.id !== session.id)] })),
+  appendStudyChatMessage: (sessionId, message) => set((state) => ({
+    studyChatSessions: state.studyChatSessions.map((session) => session.id === sessionId
+      ? { ...session, messages: [...session.messages, message], updatedAt: message.createdAt }
+      : session),
+  })),
   recordQuizAttempt: (attempt) => set((state) => ({ quizAttempts: [attempt, ...state.quizAttempts] })),
   markNotificationRead: (id) => set((state) => ({
     notifications: state.notifications.map((item) => item.id === id ? { ...item, unread: false } : item),
@@ -200,7 +216,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
   resetPrototypeData: () => set(defaultData()),
 }), {
   name: "studora-app-state",
-  version: 4,
+  version: 6,
   skipHydration: true,
   storage: createJSONStorage(() => localStorage),
   onRehydrateStorage: () => (_state, error) => {
@@ -239,6 +255,30 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
         studySessions: (upgraded.studySessions ?? []).map((session) => session.date ? session : { ...session, date: dateAfterDays(session.dayOffset) }),
       };
     }
+    if (version < 5) {
+      upgraded = { ...upgraded, studyChatSessions: [] };
+    }
+    if (version < 6) {
+      const legacyPreferences = (upgraded.workspacePreferences ?? {}) as Partial<WorkspacePreferences> & { selectedMaterialId?: string };
+      const normalizedPreferences = {
+        ...defaultWorkspacePreferences(),
+        ...legacyPreferences,
+        selectedMaterialIds: legacyPreferences.selectedMaterialIds ?? (legacyPreferences.selectedMaterialId ? [legacyPreferences.selectedMaterialId] : []),
+      };
+      delete (normalizedPreferences as typeof normalizedPreferences & { selectedMaterialId?: string }).selectedMaterialId;
+      const legacySessions = (upgraded.studyChatSessions ?? []) as Array<StudyChatSession & { materialId?: string; materialName?: string; materials?: StudyChatSession["materials"] }>;
+      upgraded = {
+        ...upgraded,
+        workspacePreferences: normalizedPreferences,
+        studyChatSessions: legacySessions.map((session) => {
+          const { materialId, materialName, ...currentSession } = session;
+          return {
+            ...currentSession,
+            materials: session.materials ?? (materialId ? [{ id: materialId, name: materialName ?? "Materi" }] : []),
+          };
+        }),
+      };
+    }
     return upgraded;
   },
   partialize: (state) => ({
@@ -258,6 +298,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     studySessionTimes: state.studySessionTimes,
     completedStudySessionIds: state.completedStudySessionIds,
     studyDrafts: state.studyDrafts,
+    studyChatSessions: state.studyChatSessions,
     quizAttempts: state.quizAttempts,
   }),
   merge: (persistedState, currentState) => {
@@ -265,6 +306,7 @@ export const useStudoraStore = create<AppState>()(persist((set) => ({
     return {
       ...currentState,
       ...saved,
+      studyChatSessions: saved.studyChatSessions ?? currentState.studyChatSessions,
       workflowPreferences: { ...currentState.workflowPreferences, ...saved.workflowPreferences },
       privacyPreferences: { ...currentState.privacyPreferences, ...saved.privacyPreferences },
       notificationPreferences: { ...currentState.notificationPreferences, ...saved.notificationPreferences },

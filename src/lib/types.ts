@@ -74,7 +74,7 @@ export interface NotificationPreferences {
 
 export interface WorkspacePreferences {
   description: string;
-  selectedMaterialId: string;
+  selectedMaterialIds: string[];
   selectedGoal: WorkspaceGoal;
   selectedTemplate: string;
   selectedOutputs: string[];
@@ -146,6 +146,29 @@ export interface StudyDraft {
   options?: StudyDraftOptions;
   prompt?: string;
   createdAt: string;
+}
+
+export interface StudyChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface StudyChatMaterial {
+  id: string;
+  name: string;
+}
+
+export interface StudyChatSession {
+  id: string;
+  materials: StudyChatMaterial[];
+  goal: WorkspaceGoal;
+  options: StudyDraftOptions;
+  status: "waiting_for_ai";
+  messages: StudyChatMessage[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Workflow {
