@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpenText, LockKeyhole } from "lucide-react";
 
@@ -14,3 +15,5 @@ export default function LoginPage() {
     <p className="login-footnote">Hindari menyimpan data penting hanya di browser ini sampai sinkronisasi akun tersedia.</p>
   </main>;
 }
+
+export const metadata: Metadata = { title: "Akses akun" };

@@ -17,10 +17,8 @@ const themeBootstrap = `(() => {
   try {
     const stored = localStorage.getItem("studora-theme");
     const choice = stored === "dark" || stored === "system" || stored === "light" ? stored : "light";
-    root.dataset.sidebarCollapsed = localStorage.getItem("studora-sidebar-collapsed") === "true" ? "true" : "false";
     apply(choice);
   } catch {
-    root.dataset.sidebarCollapsed = "false";
     apply("light");
   }
   media.addEventListener("change", () => {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, Check, Clock3, MessageSquarePlus, Send, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useStudoraStore } from "@/lib/store";
+import { Dialog, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
 import type { AssistantMessage, AssistantThread, StudyDraftOptions, Task, WorkspaceGoal } from "@/lib/types";
 
 const STORAGE_KEY = "studora-assistant-demo-v1";
@@ -59,6 +60,7 @@ export function AssistantPanel() {
   const appendMessage = useStudoraStore((state) => state.appendAssistantMessage);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const active = threads.find((thread) => thread.id === activeId);
 
   useEffect(() => {
@@ -148,11 +150,21 @@ export function AssistantPanel() {
     if (task) addTask(task);
   }
 
-  return <>
-    {open ? <>
-      <button className="assistant-backdrop" type="button" aria-label="Tutup Asisten AI" onClick={() => setOpen(false)} />
-      <aside id="assistant-panel" className="assistant-drawer" aria-label="Asisten AI" data-ai-hide>
-        <header className="assistant-head"><div className="assistant-head-icon"><Sparkles size={17} /></div><div className="assistant-head-copy"><strong>Asisten belajar</strong><span>Mode simulasi · belum tersambung</span></div><button className="assistant-icon" type="button" aria-label="Percakapan baru" onClick={newThread}><MessageSquarePlus size={17} /></button><button className="assistant-icon" type="button" aria-label="Tutup" onClick={() => setOpen(false)}><X size={18} /></button></header>
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {open ? <DialogPortal>
+        <DialogOverlay className="assistant-backdrop" />
+        <DialogContent id="assistant-panel" className="assistant-drawer" aria-modal="true" data-ai-hide onOpenAutoFocus={() => {
+          const activeElement = document.activeElement;
+          returnFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+        }} onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const target = returnFocusRef.current;
+          const fallback = document.querySelector<HTMLElement>(".assistant-nav-button");
+          (target?.isConnected ? target : fallback)?.focus({ preventScroll: true });
+          returnFocusRef.current = null;
+        }}>
+        <header className="assistant-head"><div className="assistant-head-icon"><Sparkles size={17} aria-hidden="true" /></div><div className="assistant-head-copy"><DialogTitle className="assistant-title">Asisten belajar</DialogTitle><DialogDescription className="assistant-description">Mode simulasi · belum tersambung</DialogDescription></div><button className="assistant-icon" type="button" aria-label="Percakapan baru" onClick={newThread}><MessageSquarePlus size={17} aria-hidden="true" /></button><button className="assistant-icon" type="button" aria-label="Tutup" onClick={() => setOpen(false)}><X size={18} aria-hidden="true" /></button></header>
         <div className="assistant-threadbar"><label htmlFor="assistant-thread-select">Percakapan</label><select id="assistant-thread-select" value={activeId ?? ""} onChange={(event) => setActiveId(event.target.value || null)}><option value="">Percakapan baru</option>{threads.map((thread) => <option key={thread.id} value={thread.id}>{thread.title}{thread.source === "legacy" ? " · sesi lama" : ""}</option>)}</select></div>
         <div className="assistant-messages" role="log" aria-live="polite" aria-label="Pesan Asisten AI">
           {!active ? <div className="assistant-empty"><div className="assistant-orbit"><Bot size={24} /></div><h2>Ada yang ingin dipelajari?</h2><p>Tanyakan materi atau kelola tugas lewat percakapan. Percakapan dan tugas demo tersimpan di browser ini.</p><div className="assistant-suggestions"><button type="button" onClick={() => setDraft("Tambahkan tugas Laporan praktikum")}>Tambahkan tugas</button><Link href="/tugas-tenggat" onClick={() => setOpen(false)}>Lihat tugas</Link><Link href="/workspace-ai" onClick={() => setOpen(false)}>Mulai sesi belajar</Link></div></div> : <>
@@ -161,7 +173,8 @@ export function AssistantPanel() {
           </>}
         </div>
         <div className="assistant-footer">{active?.source === "legacy" ? <p className="assistant-demo-notice">Mulai percakapan baru untuk melanjutkan dengan konteks yang masih berlaku.</p> : <><div className="assistant-demo-notice"><span className="assistant-demo-dot" /> Simulasi lokal. AI belum tersambung ke backend.</div><form className="assistant-composer" onSubmit={submit}><textarea ref={inputRef} value={draft} maxLength={4000} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Tulis permintaan, misalnya: Tambahkan tugas ..." aria-label="Pesan untuk Asisten AI" rows={3} /><button type="submit" disabled={!draft.trim()} aria-label="Kirim pesan"><Send size={16} /></button></form><div className="assistant-footer-meta"><span>Enter untuk mengirim · Shift+Enter untuk baris baru</span><span>{draft.length}/4000</span></div></>}</div>
-      </aside>
-    </> : null}
-  </>;
+        </DialogContent>
+      </DialogPortal> : null}
+    </Dialog>
+  );
 }
