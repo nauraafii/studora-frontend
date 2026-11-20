@@ -9,7 +9,11 @@ Studora is a study partner for university students. This repository contains the
 <sub>Dashboard preview using the built-in sample learning pack. The screenshots below show the current interface; study data in the prototype is stored locally in the browser.</sub>
 
 <details>
-<summary>Explore the dark theme and all 12 other pages</summary>
+<summary>Explore the dark theme, global AI assistant, and all 12 other pages</summary>
+
+### Global AI assistant
+
+![Studora global AI assistant with the dashboard behind it](docs/assistant-ai.png)
 
 ### Dashboard — dark theme
 

@@ -12,7 +12,7 @@ export function AgentsScreen() {
   const enabledAgentIds = useStudoraStore((state) => state.workspacePreferences.enabledAgentIds);
   return (
     <main className="page-content">
-      <PageHeading title="Agen AI" description="Kenali peran agen dan atur peran opsional untuk draf belajar Anda." aside={<Badge tone="blue">Konfigurasi draf</Badge>} />
+      <PageHeading title="Agen AI" description="Lihat peran dan status agen pada draf belajar Anda." aside={<Badge tone="blue">Konfigurasi draf</Badge>} action={<Link className="button button-primary" href="/workspace-ai?settings=1">Atur agen<ArrowRight size={15} aria-hidden="true" /></Link>} />
       <div className="notice notice-blue page-notice"><ShieldCheck size={15} aria-hidden="true" />Pilihan agen tersimpan sebagai preferensi lokal. Belum ada agen yang dijalankan atau materi yang dianalisis.</div>
       <ol className="agent-catalog" aria-label="Urutan peran agen AI">
         {agents.map((agent, index) => (
@@ -24,10 +24,6 @@ export function AgentsScreen() {
           </Card></li>
         ))}
       </ol>
-      <Card className="agent-catalog-cta">
-        <div><h2>Atur preferensi untuk draf Anda</h2><p>Di Ruang Kerja, Anda dapat meninjau pilihan agen dan batas materi yang dipakai saat layanan tersedia.</p></div>
-        <Link className="button button-primary" href="/workspace-ai?settings=1">Buka pengaturan alur<ArrowRight size={15} aria-hidden="true" /></Link>
-      </Card>
     </main>
   );
 }

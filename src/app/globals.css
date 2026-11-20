@@ -2421,3 +2421,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .material-picker-dialog-heading p { margin-top: 4px; line-height: 1.4; }
   .material-picker-list { gap: 6px; }
 }
+
+/* Assistant surface and ordered agent catalog refinements */
+.assistant-drawer { background: var(--surface); }
+.assistant-messages { background: var(--surface-soft); }
+.assistant-composer { background: var(--surface-raised); }
+.assistant-composer:focus-within { border-color: var(--focus-ring); outline: none; box-shadow: none; }
+.assistant-composer:has(textarea:focus-visible) { outline: 2px solid color-mix(in srgb, var(--focus-ring) 54%, transparent); outline-offset: 2px; }
+.assistant-composer textarea:focus-visible { outline: none; }
+.agent-catalog > li > .agent-catalog-card { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 16px 20px; }
